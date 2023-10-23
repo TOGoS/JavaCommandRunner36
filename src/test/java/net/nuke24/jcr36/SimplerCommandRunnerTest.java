@@ -139,6 +139,18 @@ public class SimplerCommandRunnerTest implements Runnable
 		assertEquals("Hello, world!\nHello, world!\n", out.toString());
 	}
 	
+	public void testCatEnvUris() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				"jcr:docmd", "foo=abc", "bar=xyz", //"--clear-env", "--env-from=src/test/resources/foo.env",
+				SimplerCommandRunner.CMD_CAT, "data:,[", "x-jcr36-env:foo", "x-jcr36-env:bar", "data:,]"
+			},
+			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("[abcxyz]", out.toString());
+	}
+	
 	@Override public void run() {
 		testPrint();
 		testPrintN();
@@ -151,6 +163,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		testRunJcrAsSysProc();
 		testCatDataUri();
 		testCatFile();
+		testCatEnvUris();
 	}
 	
 	public static void main(String[] args) {

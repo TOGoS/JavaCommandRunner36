@@ -22,7 +22,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SimplerCommandRunner {
-	public static final String VERSION = "JCR36.1.20"; // Bump to 36.1.x for 'simpler' version
+	public static final String VERSION = "JCR36.1.21-dev"; // Bump to 36.1.x for 'simpler' version
 	
 	public static final int EXIT_CODE_PIPING_ERROR = -1001;
 	
@@ -147,6 +147,7 @@ public class SimplerCommandRunner {
 	static final Pattern WIN_PATH_MATCHER = Pattern.compile("^([a-z]):(.*)", Pattern.CASE_INSENSITIVE);
 	static final Pattern BITPRINT_URN_PATTERN = Pattern.compile("^urn:bitprint:([A-Z2-7]{32})\\.([A-Z2-7]{39})");
 	static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:(),(.*)"); // TODO: support the rest of it!
+	static final Pattern ENV_URI_PATTERN = Pattern.compile("^x-jcr36-env:(.*)");
 	
 	public static List<String> resolveUri(String uri, Map<String,String> env) {
 		Matcher m;
@@ -177,6 +178,10 @@ public class SimplerCommandRunner {
 			if( (m = DATA_URI_PATTERN.matcher(uri)).matches() ) {
 				byte[] data = urlDecode(m.group(2));
 				return new ByteArrayInputStream(data);
+			} else if( (m = ENV_URI_PATTERN.matcher(uri)).matches() ) {
+				String envValue = env.get(m.group(1));
+				if( envValue == null ) envValue = "";
+				return new ByteArrayInputStream(envValue.getBytes(UTF8));
 			} else {
 				// But note that Java's URL.getConnection might choke when the
 				// path contains escape sequences, so we may need to do
@@ -409,11 +414,11 @@ public class SimplerCommandRunner {
 	}
 	
 	protected static String HELP_TEXT =
-		"Usage: jcr36 [jcr:run] [<k>=<v> ...] [--] <command> [<arg> ...]\n"+
+		"Usage: jcr36 [jcr:docmd] [<k>=<v> ...] [--] <command> [<arg> ...]\n"+
 		"\n"+
 		"Commands:\n"+
 		"  # Set environment variables and run the specified sub-command:\n"+
-		"  jcr:run [<k>=<v> ...] <command> [<arg> ...]\n"+
+		"  jcr:docmd [<k>=<v> ...] <command> [<arg> ...]\n"+
 		"  \n"+
 		"  # print words, separated by <separator> (defauls: one space);\n"+
 		"  # -n to omit otherwise-implicit trailing newline:\n"+
@@ -431,7 +436,8 @@ public class SimplerCommandRunner {
 				if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
 				env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
 			} else if( "--".equals(args[i]) ) {
-				return doJcrDoCmd(args, i+1, env, io);
+				// return doJcrDoCmd(args, i+1, env, io);
+				// Basically a no-op!
 			} else if( "--version".equals(args[i]) ) {
 				return doJcrPrint(new String[] { VERSION }, 0, toPrintStream(io[1]));
 			} else if( "--help".equals(args[i]) ) {
@@ -446,7 +452,7 @@ public class SimplerCommandRunner {
 					return doJcrExit(args, i+1);
 				} else if( CMD_PRINT.equals(cmd) ) {
 					return doJcrPrint(args, i+1, toPrintStream(io[1]));
-				} else if( "jcr:run".equals(cmd) ) {
+				} else if( CMD_DOCMD.equals(cmd) ) {
 					// Basically a no-op!
 				} else if( CMD_RUNSYSPROC.equals(cmd) ) {
 					return doSysProc(args, i+1, env, io);

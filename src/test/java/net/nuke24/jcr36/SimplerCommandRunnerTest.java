@@ -1,5 +1,8 @@
 package net.nuke24.jcr36;
 
+import static net.nuke24.jcr36.SimplerCommandRunner.debug;
+import static net.nuke24.jcr36.SimplerCommandRunner.quote;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
@@ -7,9 +10,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Map;
-
-import static net.nuke24.jcr36.SimplerCommandRunner.quote;
-import static net.nuke24.jcr36.SimplerCommandRunner.debug;
 
 public class SimplerCommandRunnerTest implements Runnable
 {
@@ -118,6 +118,16 @@ public class SimplerCommandRunnerTest implements Runnable
 		assertEquals("Hello, world!", out.toString());
 	}
 	
+	// This one uses data URIs with non-empty type, and base64 encoding
+	public void testCatDataUri2() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{ "jcr:cat", "data:text/plain,Hello,%20", "data:text/plain;base64,d29ybGQh" },
+			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("Hello, world!", out.toString());
+	}
+	
 	public void testCatFile() {
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
@@ -162,6 +172,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		testRunSysProcToNul();
 		testRunJcrAsSysProc();
 		testCatDataUri();
+		testCatDataUri2();
 		testCatFile();
 		testCatEnvUris();
 	}

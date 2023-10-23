@@ -14,6 +14,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -146,7 +147,7 @@ public class SimplerCommandRunner {
 	static final Pattern URI_MATCHER = Pattern.compile("^([a-z][a-z0-9+.-]+):(.*)", Pattern.CASE_INSENSITIVE);
 	static final Pattern WIN_PATH_MATCHER = Pattern.compile("^([a-z]):(.*)", Pattern.CASE_INSENSITIVE);
 	static final Pattern BITPRINT_URN_PATTERN = Pattern.compile("^urn:bitprint:([A-Z2-7]{32})\\.([A-Z2-7]{39})");
-	static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:(),(.*)"); // TODO: support the rest of it!
+	static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^,;]*)(;base64)?,(.*)"); // TODO: support the rest of it!
 	static final Pattern ENV_URI_PATTERN = Pattern.compile("^x-jcr36-env:(.*)");
 	
 	public static List<String> resolveUri(String uri, Map<String,String> env) {
@@ -176,7 +177,9 @@ public class SimplerCommandRunner {
 		for( String uri : candidates ) {
 			Matcher m;
 			if( (m = DATA_URI_PATTERN.matcher(uri)).matches() ) {
-				byte[] data = urlDecode(m.group(2));
+				boolean isBase64 = m.group(2) != null;
+				byte[] data = urlDecode(m.group(3));
+				if( isBase64 ) data = Base64.getDecoder().decode(data);
 				return new ByteArrayInputStream(data);
 			} else if( (m = ENV_URI_PATTERN.matcher(uri)).matches() ) {
 				String envValue = env.get(m.group(1));

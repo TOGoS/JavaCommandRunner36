@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -416,6 +417,19 @@ public class SimplerCommandRunner {
 		STANDARD_ALIASES.put("jcr:runsys", CMD_RUNSYSPROC);
 	}
 	
+	static Map<String,String> loadEnvFromPropertiesFile(String name, Map<String,String> env) throws IOException {
+		InputStream is = getInputStream(name, env);
+		try {
+			Properties props = new Properties();
+			props.load(is);
+			HashMap<String,String> newEnv = new HashMap<String,String>(env);
+			for( Map.Entry<Object,Object> entry : props.entrySet() ) newEnv.put(entry.getKey().toString(), entry.getValue().toString());
+			return newEnv;
+		} finally {
+			is.close();
+		}
+	}
+	
 	protected static String HELP_TEXT =
 		"Usage: jcr36 [jcr:docmd] [<k>=<v> ...] [--] <command> [<arg> ...]\n"+
 		"\n"+
@@ -430,14 +444,17 @@ public class SimplerCommandRunner {
 		"  # Exit with status code:\n"+
 		"  jrc:exit [<code>]";
 	
-	public static int doJcrDoCmd(String[] args, int i, Map<String,String> parentEnv, Object[] io) {
+	static final Pattern LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN = Pattern.compile("--load-env-from-properties-file=(.*)");
+	
+	public static int doJcrDoCmd(String[] args, int i, Map<String,String> parentEnv, Object[] io)
+	{
 		Map<String,String> env = parentEnv;
-		
+		Matcher m;
 		for( ; i<args.length; ++i ) {
 			int eqidx = args[i].indexOf('=');
-			if( eqidx >= 1 ) {
-				if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
-				env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
+			if( "--clear-env".equals(args[i]) ) {
+				// That's right; it even clears the standard aliases!
+				env = parentEnv = Collections.emptyMap();
 			} else if( "--".equals(args[i]) ) {
 				// return doJcrDoCmd(args, i+1, env, io);
 				// Basically a no-op!
@@ -445,8 +462,17 @@ public class SimplerCommandRunner {
 				return doJcrPrint(new String[] { VERSION }, 0, toPrintStream(io[1]));
 			} else if( "--help".equals(args[i]) ) {
 				return doJcrPrint(new String[] { VERSION, "\n", "\n", HELP_TEXT }, 0, toPrintStream(io[1]));
+			} else if( (m = LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN.matcher(args[i])).matches() ) {
+				try {
+					env = parentEnv = loadEnvFromPropertiesFile(m.group(1), env);
+				} catch( IOException e ) {
+					throw new RuntimeException("Error reading from properties file '"+m.group(1)+"'", e);
+				}
 			} else if( args[i].startsWith("-") ) {
 				System.err.println("Unrecognized option: "+quote(args[i]));
+			} else if( eqidx >= 1 ) {
+				if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
+				env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
 			} else {
 				String cmd = dealiasCommand(args[i], env);
 				if( CMD_CAT.equals(cmd) ) {

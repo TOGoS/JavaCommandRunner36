@@ -161,6 +161,18 @@ public class SimplerCommandRunnerTest implements Runnable
 		assertEquals("[abcxyz]", out.toString());
 	}
 	
+	public void testLoadAndCatEnvUris() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				"jcr:docmd", "baz=xyz", "--clear-env", "--load-env-from-properties-file=src/test/resources/foo.env",
+				SimplerCommandRunner.CMD_CAT, "data:,[", "data:,foo%3D", "x-jcr36-env:foo", "data:,, bar%3D", "x-jcr36-env:bar", "data:,, baz%3D", "x-jcr36-env:baz", "data:,]"
+			},
+			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("[foo=abc, bar=xyz, baz=]", out.toString());
+	}
+	
 	@Override public void run() {
 		testPrint();
 		testPrintN();
@@ -175,6 +187,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		testCatDataUri2();
 		testCatFile();
 		testCatEnvUris();
+		testLoadAndCatEnvUris();
 	}
 	
 	public static void main(String[] args) {

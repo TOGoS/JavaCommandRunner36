@@ -7,6 +7,13 @@ Fixes:
   - `--` argument to `jcr:docmd` has the intended effect of treating the following argument
     literally, i.e. as a command rather than an option or a variable assignment,
     even if it looks like an option or variable assignment
+Notes:
+  - After this release was made, I rebased the Git history
+    since v36.1.20 (8dd564e11df0d55007b9a4076e4ffce4841f0676)
+    to include otherwise missing src/test/resources/foo.env.
+    v36.1.24 was 8dd564e11df0d55007b9a4076e4ffce4841f0676,
+    which corresponds to 778bb24cfdd014cfa1a74cd309ca18bd58127d6c
+    in the new history.
 ---------------------------------------------------------------------------------------------------
 Version 36.1.22
 JAR: urn:bitprint:MLK2LFV4JQXIIHAZSNHTLX63KWSNMORK.WUNTIMAX7MPHSKIJWPJJDDQJPILO75D5HEUGWZA

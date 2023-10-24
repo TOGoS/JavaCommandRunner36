@@ -1,0 +1,15 @@
+---------------------------------------------------------------------------------------------------
+Version 36.1.22
+JAR: urn:bitprint:MLK2LFV4JQXIIHAZSNHTLX63KWSNMORK.WUNTIMAX7MPHSKIJWPJJDDQJPILO75D5HEUGWZA
+Date: 2023-10-24
+Features:
+  - Add support for `data:` URIs with a type and/or base64 encoding
+  - `--clear-env` and `--load-env-from-properties-file=<FILE|URI>` options to `jcr:docmd`
+  - Add `jcr:printenv`, which prints all environment variables, one per line
+Changes:
+  - References in help text to `jcr:run` changed to `jcr:docmd`
+Notes:
+  - `--load-env-from-properties-file` is very verbose because I want the format of the file
+    to be obvious.  That said, I might decide to drop "load" in the future.
+    Or maybe not, since it has nice symmetry with `--clear-env`.
+---------------------------------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class SimplerCommandRunnerTest implements Runnable
@@ -52,6 +53,12 @@ public class SimplerCommandRunnerTest implements Runnable
 	
 	static Map<String,String> ENV_EMPTY = Collections.emptyMap();
 	static Map<String,String> ENV_W_ALIASES = SimplerCommandRunner.withAliases(ENV_EMPTY, SimplerCommandRunner.STANDARD_ALIASES);
+	
+	static Map<String,String> CLEARENV_MEANS_PRINT = new HashMap<String,String>();
+	static {
+		CLEARENV_MEANS_PRINT.put("--clear-env", SimplerCommandRunner.CMD_PRINT);
+	}
+	static Map<String,String> ENV_W_CLEARENV_MEANS_PRINT = SimplerCommandRunner.withAliases(ENV_EMPTY, CLEARENV_MEANS_PRINT);
 	
 	static Object[] IO_NULL = new Object[] { null, null, null };
 	
@@ -188,7 +195,44 @@ public class SimplerCommandRunnerTest implements Runnable
 			},
 			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
-		assertEquals("bar=xyz\nfoo=abc\n", out.toString());		
+		assertEquals("bar=xyz\nfoo=abc\n", out.toString());
+	}
+	
+	public void testOptionNotParsedAsCommand() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				// Without '--', our goofy alias should be ignored, and --clear-env has its normal meaning:
+				SimplerCommandRunner.CMD_DOCMD, "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
+			},
+			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("foo\n", out.toString());
+	}
+	public void testPostDashDashOptionesqueCommand() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				// '--' should force the next arg to be interpreted as a command.
+				SimplerCommandRunner.CMD_DOCMD, "--", "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
+			},
+			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals(SimplerCommandRunner.CMD_PRINT+" foo\n", out.toString());
+	}
+	public void testJcrDoCmdResetsOptionParsing() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				// '--' should force the next arg to be interpreted as a command;
+				// if that command is 'jcr:docmd', it should parse the remaining arguments
+				// normally (i.e. our recursion -> loop optimization should be transparent,
+				// and therefore --clear-env should be treated as an option, not a command).
+				SimplerCommandRunner.CMD_DOCMD, "--", SimplerCommandRunner.CMD_DOCMD, "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
+			},
+			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("foo\n", out.toString());
 	}
 	
 	@Override public void run() {
@@ -208,6 +252,9 @@ public class SimplerCommandRunnerTest implements Runnable
 		testCatEnvUris();
 		testLoadAndCatEnvUris();
 		testPrintEnv();
+		testOptionNotParsedAsCommand();
+		testPostDashDashOptionesqueCommand();
+		testJcrDoCmdResetsOptionParsing();
 	}
 	
 	public static void main(String[] args) {

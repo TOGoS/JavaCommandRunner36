@@ -470,48 +470,54 @@ public class SimplerCommandRunner {
 	public static int doJcrDoCmd(String[] args, int i, Map<String,String> parentEnv, Object[] io)
 	{
 		Map<String,String> env = parentEnv;
+		boolean allowOpts = true;
 		Matcher m;
 		for( ; i<args.length; ++i ) {
-			int eqidx = args[i].indexOf('=');
-			if( "--clear-env".equals(args[i]) ) {
-				// That's right; it even clears the standard aliases!
-				env = parentEnv = Collections.emptyMap();
-			} else if( "--".equals(args[i]) ) {
-				// return doJcrDoCmd(args, i+1, env, io);
-				// Basically a no-op!
-			} else if( "--version".equals(args[i]) ) {
-				return doJcrPrint(new String[] { VERSION }, 0, toPrintStream(io[1]));
-			} else if( "--help".equals(args[i]) ) {
-				return doJcrPrint(new String[] { VERSION, "\n", "\n", HELP_TEXT }, 0, toPrintStream(io[1]));
-			} else if( (m = LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN.matcher(args[i])).matches() ) {
-				try {
-					env = parentEnv = loadEnvFromPropertiesFile(m.group(1), env);
-				} catch( IOException e ) {
-					throw new RuntimeException("Error reading from properties file '"+m.group(1)+"'", e);
+			if( allowOpts ) {
+				int eqidx = args[i].indexOf('=');
+				if( "--clear-env".equals(args[i]) ) {
+					// That's right; it even clears the standard aliases!
+					env = parentEnv = Collections.emptyMap();
+					continue;
+				} else if( "--".equals(args[i]) ) {
+					allowOpts = false;
+					continue;
+				} else if( "--version".equals(args[i]) ) {
+					return doJcrPrint(new String[] { VERSION }, 0, toPrintStream(io[1]));
+				} else if( "--help".equals(args[i]) ) {
+					return doJcrPrint(new String[] { VERSION, "\n", "\n", HELP_TEXT }, 0, toPrintStream(io[1]));
+				} else if( (m = LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN.matcher(args[i])).matches() ) {
+					try {
+						env = parentEnv = loadEnvFromPropertiesFile(m.group(1), env);
+					} catch( IOException e ) {
+						throw new RuntimeException("Error reading from properties file '"+m.group(1)+"'", e);
+					}
+					continue;
+				} else if( args[i].startsWith("-") ) {
+					System.err.println("Unrecognized option: "+quote(args[i]));
+					return 1;
+				} else if( eqidx >= 1 ) {
+					if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
+					env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
+					continue;
 				}
-			} else if( args[i].startsWith("-") ) {
-				System.err.println("Unrecognized option: "+quote(args[i]));
-				return 1;
-			} else if( eqidx >= 1 ) {
-				if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
-				env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
+			}
+			
+			String cmd = dealiasCommand(args[i], env);
+			if( CMD_CAT.equals(cmd) ) {
+				return doJcrCat(args, i+1, env, io);
+			} else if( CMD_PRINTENV.equals(cmd) ) {
+				return doJcrPrintEnv(args, i+1, env, io);
+			} else if( CMD_EXIT.equals(cmd) ) {
+				return doJcrExit(args, i+1);
+			} else if( CMD_PRINT.equals(cmd) ) {
+				return doJcrPrint(args, i+1, toPrintStream(io[1]));
+			} else if( CMD_DOCMD.equals(cmd) ) {
+				allowOpts = true;
+			} else if( CMD_RUNSYSPROC.equals(cmd) ) {
+				return doSysProc(args, i+1, env, io);
 			} else {
-				String cmd = dealiasCommand(args[i], env);
-				if( CMD_CAT.equals(cmd) ) {
-					return doJcrCat(args, i+1, env, io);
-				} else if( CMD_PRINTENV.equals(cmd) ) {
-					return doJcrPrintEnv(args, i+1, env, io);
-				} else if( CMD_EXIT.equals(cmd) ) {
-					return doJcrExit(args, i+1);
-				} else if( CMD_PRINT.equals(cmd) ) {
-					return doJcrPrint(args, i+1, toPrintStream(io[1]));
-				} else if( CMD_DOCMD.equals(cmd) ) {
-					// Basically a no-op!
-				} else if( CMD_RUNSYSPROC.equals(cmd) ) {
-					return doSysProc(args, i+1, env, io);
-				} else {
-					return doSysProc(args, i, env, io);
-				}
+				return doSysProc(args, i, env, io);
 			}
 		}
 		return 0;

@@ -14,7 +14,6 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +21,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.commons.codec.base64.Base64;
 
 public class SimplerCommandRunner {
 	public static final String VERSION = "JCR36.1.21-dev"; // Bump to 36.1.x for 'simpler' version
@@ -174,6 +175,11 @@ public class SimplerCommandRunner {
 		}
 	}
 	
+	@SuppressWarnings("deprecation")
+	static byte[] base64Decode(byte[] input) {
+		return Base64.decode(input);
+	}
+	
 	public static InputStream getInputStream(String name, Map<String,String> env) throws IOException {
 		List<String> candidates = resolveUri(name, env);
 		for( String uri : candidates ) {
@@ -181,7 +187,7 @@ public class SimplerCommandRunner {
 			if( (m = DATA_URI_PATTERN.matcher(uri)).matches() ) {
 				boolean isBase64 = m.group(2) != null;
 				byte[] data = urlDecode(m.group(3));
-				if( isBase64 ) data = Base64.getDecoder().decode(data);
+				data = isBase64 ? base64Decode(data) : data;
 				return new ByteArrayInputStream(data);
 			} else if( (m = ENV_URI_PATTERN.matcher(uri)).matches() ) {
 				String envValue = env.get(m.group(1));

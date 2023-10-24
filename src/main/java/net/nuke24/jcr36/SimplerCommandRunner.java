@@ -175,7 +175,6 @@ public class SimplerCommandRunner {
 		}
 	}
 	
-	@SuppressWarnings("deprecation")
 	static byte[] base64Decode(byte[] input) {
 		return Base64.decode(input);
 	}
@@ -439,6 +438,7 @@ public class SimplerCommandRunner {
 	}
 	
 	static Map<String,String> loadEnvFromPropertiesFile(String name, Map<String,String> env) throws IOException {
+		@SuppressWarnings("resource")
 		InputStream is = getInputStream(name, env);
 		try {
 			Properties props = new Properties();

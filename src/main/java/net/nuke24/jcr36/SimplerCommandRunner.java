@@ -526,16 +526,18 @@ public class SimplerCommandRunner {
 		return env;
 	}
 	
-	public static void main(String[] args) {
+	public static int doJcrDoCmdMain(String[] args, int i, Map<String,String> env, Object[] io) {
 		int argi = 0;
 		boolean loadStdAliases = true;
-		if( "--no-std-aliases".equals(args[argi]) ) {
+		if( args.length > argi && "--no-std-aliases".equals(args[argi]) ) {
 			loadStdAliases = false;
 			++argi;
 		}
-		Map<String,String> env = System.getenv();
 		env = withAliases(env, loadStdAliases ? STANDARD_ALIASES : Collections.<String,String>emptyMap());
-		int exitCode = doJcrDoCmd(args, argi, env, new Object[] { System.in, System.out, System.err });
-		System.exit(exitCode);
+		return doJcrDoCmd(args, argi, env, io);
+	}
+	
+	public static void main(String[] args) {
+		System.exit(doJcrDoCmdMain(args, 0, System.getenv(), new Object[] { System.in, System.out, System.err }));
 	}
 }

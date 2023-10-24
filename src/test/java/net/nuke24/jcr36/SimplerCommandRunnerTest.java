@@ -51,7 +51,13 @@ public class SimplerCommandRunnerTest implements Runnable
 	}
 	
 	static Map<String,String> ENV_EMPTY = Collections.emptyMap();
-	static Map<String,String> ENV_W_ALIASES = SimplerCommandRunner.withAliases(ENV_EMPTY, SimplerCommandRunner.STANDARD_ALIASES);	
+	static Map<String,String> ENV_W_ALIASES = SimplerCommandRunner.withAliases(ENV_EMPTY, SimplerCommandRunner.STANDARD_ALIASES);
+	
+	static Object[] IO_NULL = new Object[] { null, null, null };
+	
+	public void testMainNothing() {
+		assertEquals(0, SimplerCommandRunner.doJcrDoCmdMain(new String[] {}, 0, ENV_EMPTY, IO_NULL));
+	}
 	
 	public void testPrint() {
 		OutputCollector out = OutputCollector.create();
@@ -186,6 +192,7 @@ public class SimplerCommandRunnerTest implements Runnable
 	}
 	
 	@Override public void run() {
+		testMainNothing();
 		testPrint();
 		testPrintN();
 		testExit();

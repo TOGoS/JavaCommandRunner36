@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.codec.base64.Base64;
 
 public class SimplerCommandRunner {
-	public static final String VERSION = "JCR36.1.24"; // Bump to 36.1.x for 'simpler' version
+	public static final String VERSION = "JCR36.1.25-dev"; // Bump to 36.1.x for 'simpler' version
 	
 	public static final int EXIT_CODE_PIPING_ERROR = -1001;
 	

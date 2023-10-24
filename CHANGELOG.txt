@@ -1,7 +1,7 @@
 ---------------------------------------------------------------------------------------------------
 Version 36.1.24
-JAR: ???
-Date: ???
+JAR: urn:bitprint:2KZOTWESFPHVZG72OW6WNROYHZD4BVWB.YDWEYNN6NSM22BJAD2MPH7TXJKER3W3DXKCEH7A
+Date: 2023-10-24
 Fixes:
   - Calling the program with zero arguments no longer throws ArrayIndexOutOfBoundsException
   - `--` argument to `jcr:docmd` has the intended effect of treating the following argument

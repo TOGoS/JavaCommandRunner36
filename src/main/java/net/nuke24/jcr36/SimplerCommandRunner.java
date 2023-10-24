@@ -29,9 +29,10 @@ public class SimplerCommandRunner {
 	public static final int EXIT_CODE_PIPING_ERROR = -1001;
 	
 	public static final String CMD_DOCMD = "http://ns.nuke24.net/JavaCommandRunner36/Action/DoCmd";
-	public static final String CMD_EXIT = "http://ns.nuke24.net/JavaCommandRunner36/Action/Exit";
+	public static final String CMD_PRINTENV   = "http://ns.nuke24.net/JavaCommandRunner36/Action/PrintEnv";
+	public static final String CMD_EXIT  = "http://ns.nuke24.net/JavaCommandRunner36/Action/Exit";
 	public static final String CMD_PRINT = "http://ns.nuke24.net/JavaCommandRunner36/Action/Print";
-	public static final String CMD_CAT = "http://ns.nuke24.net/JavaCommandRunner36/Action/Cat";
+	public static final String CMD_CAT   = "http://ns.nuke24.net/JavaCommandRunner36/Action/Cat";
 	public static final String CMD_RUNSYSPROC = "http://ns.nuke24.net/JavaCommandRunner36/Action/RunSysProc";
 	
 	static final Charset UTF8 = Charset.forName("UTF-8");
@@ -214,6 +215,19 @@ public class SimplerCommandRunner {
 			}
 		}
 		return name;
+	}
+	
+	public static int doJcrPrintEnv(String[] args, int i, Map<String,String> env, Object[] io) {
+		if( args.length > i ) {
+			throw new RuntimeException("jcr:printenv takes no arguments");
+		}
+		PrintStream out = toPrintStream(io[1]);
+		ArrayList<String> keys = new ArrayList<String>(env.keySet());
+		Collections.sort(keys);
+		for( String key : keys ) {
+			out.print(key+"="+env.get(key)+"\n");
+		}
+		return 0;
 	}
 	
 	public static int doJcrExit(String[] args, int i) {
@@ -410,11 +424,12 @@ public class SimplerCommandRunner {
 	
 	public static Map<String,String> STANDARD_ALIASES = new HashMap<String,String>();
 	static {
-		STANDARD_ALIASES.put("jcr:cat"   , CMD_CAT);
-		STANDARD_ALIASES.put("jcr:docmd" , CMD_DOCMD);
-		STANDARD_ALIASES.put("jcr:exit"  , CMD_EXIT);
-		STANDARD_ALIASES.put("jcr:print" , CMD_PRINT);
-		STANDARD_ALIASES.put("jcr:runsys", CMD_RUNSYSPROC);
+		STANDARD_ALIASES.put("jcr:cat"     , CMD_CAT       );
+		STANDARD_ALIASES.put("jcr:docmd"   , CMD_DOCMD     );
+		STANDARD_ALIASES.put("jcr:printenv", CMD_PRINTENV  );
+		STANDARD_ALIASES.put("jcr:exit"    , CMD_EXIT      );
+		STANDARD_ALIASES.put("jcr:print"   , CMD_PRINT     );
+		STANDARD_ALIASES.put("jcr:runsys"  , CMD_RUNSYSPROC);
 	}
 	
 	static Map<String,String> loadEnvFromPropertiesFile(String name, Map<String,String> env) throws IOException {
@@ -470,6 +485,7 @@ public class SimplerCommandRunner {
 				}
 			} else if( args[i].startsWith("-") ) {
 				System.err.println("Unrecognized option: "+quote(args[i]));
+				return 1;
 			} else if( eqidx >= 1 ) {
 				if( env == parentEnv ) env = new HashMap<String,String>(parentEnv);
 				env.put(args[i].substring(0,eqidx), args[i].substring(eqidx+1));
@@ -477,6 +493,8 @@ public class SimplerCommandRunner {
 				String cmd = dealiasCommand(args[i], env);
 				if( CMD_CAT.equals(cmd) ) {
 					return doJcrCat(args, i+1, env, io);
+				} else if( CMD_PRINTENV.equals(cmd) ) {
+					return doJcrPrintEnv(args, i+1, env, io);
 				} else if( CMD_EXIT.equals(cmd) ) {
 					return doJcrExit(args, i+1);
 				} else if( CMD_PRINT.equals(cmd) ) {

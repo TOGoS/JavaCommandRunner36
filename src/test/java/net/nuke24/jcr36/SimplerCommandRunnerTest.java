@@ -173,6 +173,18 @@ public class SimplerCommandRunnerTest implements Runnable
 		assertEquals("[foo=abc, bar=xyz, baz=]", out.toString());
 	}
 	
+	public void testPrintEnv() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{
+				"jcr:docmd", "--clear-env", "foo=abc", "bar=xyz",
+				SimplerCommandRunner.CMD_PRINTENV
+			},
+			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("bar=xyz\nfoo=abc\n", out.toString());		
+	}
+	
 	@Override public void run() {
 		testPrint();
 		testPrintN();
@@ -188,6 +200,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		testCatFile();
 		testCatEnvUris();
 		testLoadAndCatEnvUris();
+		testPrintEnv();
 	}
 	
 	public static void main(String[] args) {

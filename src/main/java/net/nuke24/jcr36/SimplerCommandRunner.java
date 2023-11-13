@@ -506,14 +506,14 @@ public class SimplerCommandRunner {
 			String cmd = dealiasCommand(args[i], env);
 			if( CMD_CAT.equals(cmd) ) {
 				return doJcrCat(args, i+1, env, io);
-			} else if( CMD_PRINTENV.equals(cmd) ) {
-				return doJcrPrintEnv(args, i+1, env, io);
+			} else if( CMD_DOCMD.equals(cmd) ) {
+				allowOpts = true;
 			} else if( CMD_EXIT.equals(cmd) ) {
 				return doJcrExit(args, i+1);
 			} else if( CMD_PRINT.equals(cmd) ) {
 				return doJcrPrint(args, i+1, toPrintStream(io[1]));
-			} else if( CMD_DOCMD.equals(cmd) ) {
-				allowOpts = true;
+			} else if( CMD_PRINTENV.equals(cmd) ) {
+				return doJcrPrintEnv(args, i+1, env, io);
 			} else if( CMD_RUNSYSPROC.equals(cmd) ) {
 				return doSysProc(args, i+1, env, io);
 			} else {

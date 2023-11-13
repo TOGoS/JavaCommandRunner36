@@ -1,6 +1,7 @@
 ---------------------------------------------------------------------------------------------------
 Version 36.1.26
-Date: ???
+JAR: urn:bitprint:H6SX6RXIIIWQ2YFKWBKQIOXVEUXD2DTW.XTA6A7A7ZOQUJ3R25PCLZW3C4TTTRKBPRB35K7A
+Date: 2023-11-13
 Features:
   - Add http://ns.nuke24.net/JavaCommandRunner36/Action/FindExe, which can be handy,
     especially with `-v`, for determining where your executable files are, or
@@ -11,6 +12,7 @@ Changes:
     resolution might be expected to be case-insensitive on Windows.
   - Always include empty string at the beginning of effective PATHEXT so that
     explicitly spelled-out commands (e.g. "myscript.bat") will not fail to resolve.
+  - Piping error exit code changed from -1001 to 23.
 ---------------------------------------------------------------------------------------------------
 Version 36.1.24
 JAR: urn:bitprint:2KZOTWESFPHVZG72OW6WNROYHZD4BVWB.YDWEYNN6NSM22BJAD2MPH7TXJKER3W3DXKCEH7A

@@ -27,13 +27,18 @@ import org.apache.commons.codec.base64.Base64;
 public class SimplerCommandRunner {
 	public static final String VERSION = "JCR36.1.25-dev"; // Bump to 36.1.x for 'simpler' version
 	
-	public static final int EXIT_CODE_PIPING_ERROR = -1001;
+	public static final int EXIT_CODE_PIPING_ERROR = 23; // Previously -1001
+	// Borrowing some 'standard Linux exit codes':
+	public static final int EXIT_CODE_USAGE_ERROR = 2; // 'Misuse of shell built-in'
+	public static final int EXIT_CODE_COMMAND_NOT_FOUND = 127;
+	public static final int EXIT_CODE_INVALID_EXIT_ARGUMENT = 128;
 	
 	public static final String CMD_DOCMD = "http://ns.nuke24.net/JavaCommandRunner36/Action/DoCmd";
 	public static final String CMD_PRINTENV   = "http://ns.nuke24.net/JavaCommandRunner36/Action/PrintEnv";
 	public static final String CMD_EXIT  = "http://ns.nuke24.net/JavaCommandRunner36/Action/Exit";
 	public static final String CMD_PRINT = "http://ns.nuke24.net/JavaCommandRunner36/Action/Print";
 	public static final String CMD_CAT   = "http://ns.nuke24.net/JavaCommandRunner36/Action/Cat";
+	public static final String CMD_FINDEXE = "http://ns.nuke24.net/JavaCommandRunner36/Action/FindExe";
 	public static final String CMD_RUNSYSPROC = "http://ns.nuke24.net/JavaCommandRunner36/Action/RunSysProc";
 	
 	static final Charset UTF8 = Charset.forName("UTF-8");
@@ -128,6 +133,8 @@ public class SimplerCommandRunner {
 		}
 	}
 	
+	//// Array functions
+	
 	public static <T> T[] slice(T[] arr, int offset, int length, Class<T> elementClass) {
 		assert( length - offset <= arr.length );
 		if( offset == 0 ) return arr;
@@ -143,6 +150,16 @@ public class SimplerCommandRunner {
 	public static <T> T[] slice(T[] arr, int offset, Class<T> elementClass) {
 		return slice(arr, offset, arr.length-offset, elementClass);
 	}
+	
+	protected static <T> T[] cons(T item, T[] list) {
+		@SuppressWarnings("unchecked")
+		T[] newList = (T[])Array.newInstance(list.getClass().getComponentType(), list.length + 1);
+		newList[0] = item;
+		for( int i=0; i<list.length; ++i ) newList[i+1] = list[i];
+		return newList;
+	}
+	
+	////
 	
 	// Require scheme to have at least 2 characters
 	// so that windows paths like "C:/foo/bar" are unambiguously
@@ -203,23 +220,56 @@ public class SimplerCommandRunner {
 		throw new FileNotFoundException("Couldn't resolve '"+name+"' to a readable resource"); 
 	}
 	
-	protected static String resolveProgram(String name, Map<String,String> env) {
+	protected static List<String> resolvePrograms(String name, Map<String,String> env, PrintStream debugStream) {
 		String pathSepRegex = Pattern.quote(File.pathSeparator);
 		
 		String pathsStr = env.get("PATH");
+		if( pathsStr == null ) pathsStr = env.get("Path"); // For Windows compatibility
 		if( pathsStr == null ) pathsStr = "";
 		String[] pathParts = pathsStr.length() == 0 ? new String[0] : pathsStr.split(pathSepRegex);
 		String pathExtStr = env.get("PATHEXT");
-		String[] pathExts = pathExtStr == null || pathExtStr.length() == 0 ? new String[] {""} : pathExtStr.split(pathSepRegex);
+		String[] pathExts = pathExtStr == null || pathExtStr.length() == 0 ? new String[] {} : pathExtStr.split(pathSepRegex);
+		pathExts = cons("", pathExts);
+		if( debugStream != null ) {
+			debugStream.println("PATH: "+pathsStr);
+			debugStream.println("Path separator: "+File.pathSeparator);
+			debugStream.println("Path separator regex: "+pathSepRegex);
+			debugStream.print("PATH items: ");
+			String sep = "";
+			for( String path : pathParts ) {
+				debugStream.print(sep+path);
+				sep = ", ";
+			}
+			debugStream.println();
+			debugStream.println("PATHEXT: "+pathExtStr);
+			debugStream.print("PATHEXT items: ");
+			sep = "";
+			for( String ext : pathExts ) {
+				debugStream.print(sep+ext);
+				sep = ", ";
+			}
+			debugStream.println();
+		}
+		
+		List<String> results = new ArrayList<String>();
 		
 		for( String path : pathParts ) {
 			for( String pathExt : pathExts ) {
 				File candidate = new File(path + File.separator + name + pathExt);
-				// System.err.println("Checking for "+candidate.getPath()+"...");
-				if( candidate.exists() ) return candidate.getPath();
+				if( debugStream != null ) debugStream.println("Checking for "+candidate.getPath()+"...");
+				if( candidate.exists() ) {
+					if( debugStream != null ) debugStream.println("Found "+candidate.getPath());
+					results.add(candidate.getPath());
+				}
 			}
 		}
-		return name;
+		
+		return results;
+	}
+	
+	protected static String resolveProgram(String name, Map<String,String> env) {
+		List<String> x = resolvePrograms(name, env, null);
+		return x.size() == 0 ? name : x.get(0);
 	}
 	
 	public static int doJcrPrintEnv(String[] args, int i, Map<String,String> env, Object[] io) {
@@ -282,6 +332,29 @@ public class SimplerCommandRunner {
 				return 1;
 			}
 			_sep = ofs;
+		}
+		return 0;
+	}
+	
+	public static int doFindExe(String[] args, int i, Map<String,String> env, PrintStream out, PrintStream err) {
+		PrintStream debugStream = null;
+		for( ; i<args.length; ++i ) {
+			if( "-v".equals(args[i]) ) {
+				debugStream = err;
+			} else if( "--".equals(args[i]) ) {
+				++i;
+				break;
+			} else if( !args[i].startsWith("-") ) {
+				break;
+			} else {
+				err.println("FindExe: Unrecognized option: "+quote(args[i]));
+				return EXIT_CODE_USAGE_ERROR;
+			}
+		}
+		for( ; i<args.length; ) {
+			for( String path : resolvePrograms(args[i++], env, debugStream) ) {
+				out.println(path);
+			}
 		}
 		return 0;
 	}
@@ -510,6 +583,8 @@ public class SimplerCommandRunner {
 				allowOpts = true;
 			} else if( CMD_EXIT.equals(cmd) ) {
 				return doJcrExit(args, i+1);
+			} else if( CMD_FINDEXE.equals(cmd) ) {
+				return doFindExe(args, i+1, env, toPrintStream(io[1]), toPrintStream(io[2]));
 			} else if( CMD_PRINT.equals(cmd) ) {
 				return doJcrPrint(args, i+1, toPrintStream(io[1]));
 			} else if( CMD_PRINTENV.equals(cmd) ) {

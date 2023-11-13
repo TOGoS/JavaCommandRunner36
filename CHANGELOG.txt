@@ -1,4 +1,17 @@
 ---------------------------------------------------------------------------------------------------
+Version 36.1.26
+Date: ???
+Features:
+  - Add http://ns.nuke24.net/JavaCommandRunner36/Action/FindExe, which can be handy,
+    especially with `-v`, for determining where your executable files are, or
+    why they can't be found.
+Changes:
+  - If $PATH is null, try $Path, for Windows compatibility.
+    This may turn out to be insufficient, as all environment variable
+    resolution might be expected to be case-insensitive on Windows.
+  - Always include empty string at the beginning of effective PATHEXT so that
+    explicitly spelled-out commands (e.g. "myscript.bat") will not fail to resolve.
+---------------------------------------------------------------------------------------------------
 Version 36.1.24
 JAR: urn:bitprint:2KZOTWESFPHVZG72OW6WNROYHZD4BVWB.YDWEYNN6NSM22BJAD2MPH7TXJKER3W3DXKCEH7A
 Date: 2023-10-24

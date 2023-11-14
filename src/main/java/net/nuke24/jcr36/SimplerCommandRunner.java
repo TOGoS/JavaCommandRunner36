@@ -169,25 +169,47 @@ public class SimplerCommandRunner {
 	static final Pattern BITPRINT_URN_PATTERN = Pattern.compile("^urn:bitprint:([A-Z2-7]{32})\\.([A-Z2-7]{39})");
 	static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^,;]*)(;base64)?,(.*)"); // TODO: support the rest of it!
 	static final Pattern ENV_URI_PATTERN = Pattern.compile("^x-jcr36-env:(.*)");
+	static final Pattern FILE_URI_MATCHER = Pattern.compile("file:(.*)", Pattern.CASE_INSENSITIVE);
+	// Resolves to the absolute path of the file named by the rest of the URI.
+	// Mostly here for testing.  Is a crappy stand-in for a proper function.
+	static final Pattern ABSOLUTE_PATH_URI_PATTERN = Pattern.compile("^x-jcr36-absolute-path:(.*)");
 	
-	public static List<String> resolveUri(String uri, Map<String,String> env) {
+	public static String resolveFilePath(File pwd, String path, boolean unc) {
+		path = path.replace("\\", "/");
+		boolean relativeResolved = false;
+		Matcher m;
+		while( true ) {
+			if( path.startsWith("//") ) {
+				return path;
+			} else if( path.startsWith("/") ) {
+				return unc ? "//" + path : path;
+			} else if( (m = WIN_PATH_MATCHER.matcher(path)).matches() ) {
+				String winPath = m.group(1).toUpperCase()+":"+m.group(2);
+				return unc ? "///" + winPath : winPath;
+			} else if( !relativeResolved ) {
+				// relative
+				path = new File(pwd, path).getAbsolutePath().replace("\\","/");
+				relativeResolved = true;
+			} else {
+				// Warning might be in order here
+				return path;
+			}
+		}
+	}
+	
+	public static List<String> resolveUri(String uri, File pwd, Map<String,String> env) {
 		Matcher m;
 		if( (m = BITPRINT_URN_PATTERN.matcher(uri)).matches() ) {
 			m.group(1);
 			throw new RuntimeException("Hash URN resolution not yet supported");
+		} else if( (m = FILE_URI_MATCHER.matcher(uri)).matches() ) {
+			// Still need to resolve it, in case it's a relative path
+			String path = resolveFilePath(pwd, new String(urlDecode(m.group(1)), UTF8), true);
+			return Collections.singletonList("file:"+urlEncodePath(path.getBytes(UTF8)));
 		} else if( URI_MATCHER.matcher(uri).matches() ) {
 			return Collections.singletonList(uri);
 		} else {
-			String path = uri.replace("\\", "/");
-			if( path.startsWith("//") ) {
-				// already UNC
-			} else if( uri.startsWith("/") ) {
-				path = "//" + path;
-			} else if( (m = WIN_PATH_MATCHER.matcher(path)).matches() ) {
-				path = "///" + m.group(1).toUpperCase()+":"+m.group(2);
-			} else {
-				// relative
-			}
+			String path = resolveFilePath(pwd, uri, true);
 			return Collections.singletonList("file:"+urlEncodePath(path.getBytes(UTF8)));
 		}
 	}
@@ -196,8 +218,8 @@ public class SimplerCommandRunner {
 		return Base64.decode(input);
 	}
 	
-	public static InputStream getInputStream(String name, Map<String,String> env) throws IOException {
-		List<String> candidates = resolveUri(name, env);
+	public static InputStream getInputStream(String name, File pwd, Map<String,String> env) throws IOException {
+		List<String> candidates = resolveUri(name, pwd, env);
 		for( String uri : candidates ) {
 			Matcher m;
 			if( (m = DATA_URI_PATTERN.matcher(uri)).matches() ) {
@@ -209,6 +231,8 @@ public class SimplerCommandRunner {
 				String envValue = env.get(m.group(1));
 				if( envValue == null ) envValue = "";
 				return new ByteArrayInputStream(envValue.getBytes(UTF8));
+			} else if( (m = ABSOLUTE_PATH_URI_PATTERN.matcher(uri)).matches() ) {
+				return new ByteArrayInputStream(resolveFilePath(pwd, m.group(1), false).getBytes(UTF8));
 			} else {
 				// But note that Java's URL.getConnection might choke when the
 				// path contains escape sequences, so we may need to do
@@ -303,7 +327,7 @@ public class SimplerCommandRunner {
 	
 	static final Pattern OFS_PAT = Pattern.compile("^--ofs=(.*)$");
 	
-	public static int doJcrCat(String[] args, int i, Map<String,String> env, Object[] io) {
+	public static int doJcrCat(String[] args, int i, File pwd, Map<String,String> env, Object[] io) {
 		String ofs = ""; // Output file separator, to be symmetric with print --ofs=whatever
 		Matcher m;
 		for( ; i<args.length; ++i ) {
@@ -324,7 +348,7 @@ public class SimplerCommandRunner {
 		for( ; i<args.length; ++i ) {
 			out.print(_sep);
 			try {
-				new Piper(getInputStream(args[i], env), true, out, false).run();
+				new Piper(getInputStream(args[i], pwd, env), true, out, false).run();
 			} catch (IOException e) {
 				PrintStream err = toPrintStream(io[2]); 
 				err.print("Failed to open "+args[i]+": ");
@@ -455,13 +479,14 @@ public class SimplerCommandRunner {
 		throw new RuntimeException("Don't know how to make PrintStream from "+os);
 	}
 	
-	public static int doSysProc(String[] args, int i, Map<String,String> env, Object[] io) {
+	public static int doSysProc(String[] args, int i, File pwd, Map<String,String> env, Object[] io) {
 		String[] resolvedArgs = new String[args.length-i];
 		resolvedArgs[0] = resolveProgram(args[i++], env);
 		for( int j=1; i<args.length; ++i, ++j ) resolvedArgs[j] = args[i];
 		ProcessBuilder pb = new ProcessBuilder(resolvedArgs);
 		pb.environment().clear();
 		pb.environment().putAll(env);
+		pb.directory(pwd);
 		pb.redirectInput(io[0] == System.in ? Redirect.INHERIT : Redirect.PIPE);
 		pb.redirectOutput(io[1] == System.out ? Redirect.INHERIT : Redirect.PIPE);
 		pb.redirectError( io[2] == System.err ? Redirect.INHERIT : Redirect.PIPE);
@@ -485,9 +510,9 @@ public class SimplerCommandRunner {
 			
 			return exitCode;
 		} catch (IOException e) {
-			throw new RuntimeException("Failed to run process "+debug(resolvedArgs), e);
+			throw new RuntimeException("Failed to run process "+debug(resolvedArgs)+" (pwd="+pwd+")", e);
 		} catch (InterruptedException e) {
-			throw new RuntimeException("Failed to run process "+debug(resolvedArgs), e);
+			throw new RuntimeException("Interrupted while running process "+debug(resolvedArgs)+" (pwd="+pwd+")", e);
 		}
 	}
 	
@@ -510,9 +535,9 @@ public class SimplerCommandRunner {
 		STANDARD_ALIASES.put("jcr:runsys"  , CMD_RUNSYSPROC);
 	}
 	
-	static Map<String,String> loadEnvFromPropertiesFile(String name, Map<String,String> env) throws IOException {
+	static Map<String,String> loadEnvFromPropertiesFile(String name, File pwd, Map<String,String> env) throws IOException {
 		@SuppressWarnings("resource")
-		InputStream is = getInputStream(name, env);
+		InputStream is = getInputStream(name, pwd, env);
 		try {
 			Properties props = new Properties();
 			props.load(is);
@@ -525,7 +550,12 @@ public class SimplerCommandRunner {
 	}
 	
 	protected static String HELP_TEXT =
-		"Usage: jcr36 [jcr:docmd] [<k>=<v> ...] [--] <command> [<arg> ...]\n"+
+		"Usage: jcr36 [jcr:docmd] [<opts>] [<k>=<v> ...] [--] <command> [<arg> ...]\n"+
+		"\n"+
+		"Options:\n"+
+		"  --cd=<dir>  ; use <dir> as the pwd for the following command\n"+
+		"  --clear-env ; do not inherit environment variables\n"+
+		"  --load-env-from-properties-file=<file|uri>\n"+
 		"\n"+
 		"Commands:\n"+
 		"  # Set environment variables and run the specified sub-command:\n"+
@@ -539,8 +569,9 @@ public class SimplerCommandRunner {
 		"  jrc:exit [<code>]";
 	
 	static final Pattern LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN = Pattern.compile("--load-env-from-properties-file=(.*)");
+	static final Pattern CD_PATTERN = Pattern.compile("--cd=(.*)");
 	
-	public static int doJcrDoCmd(String[] args, int i, Map<String,String> parentEnv, Object[] io)
+	public static int doJcrDoCmd(String[] args, int i, File pwd, Map<String,String> parentEnv, Object[] io)
 	{
 		Map<String,String> env = parentEnv;
 		boolean allowOpts = true;
@@ -561,10 +592,13 @@ public class SimplerCommandRunner {
 					return doJcrPrint(new String[] { VERSION, "\n", "\n", HELP_TEXT }, 0, toPrintStream(io[1]));
 				} else if( (m = LOAD_ENV_FROM_PROPERTIES_FILE_PATTERN.matcher(args[i])).matches() ) {
 					try {
-						env = parentEnv = loadEnvFromPropertiesFile(m.group(1), env);
+						env = parentEnv = loadEnvFromPropertiesFile(m.group(1), pwd, env);
 					} catch( IOException e ) {
 						throw new RuntimeException("Error reading from properties file '"+m.group(1)+"'", e);
 					}
+					continue;
+				} else if( (m = CD_PATTERN.matcher(args[i])).matches() ) {
+					pwd = new File(resolveFilePath(pwd, m.group(1), false));
 					continue;
 				} else if( args[i].startsWith("-") ) {
 					System.err.println("Unrecognized option: "+quote(args[i]));
@@ -578,7 +612,7 @@ public class SimplerCommandRunner {
 			
 			String cmd = dealiasCommand(args[i], env);
 			if( CMD_CAT.equals(cmd) ) {
-				return doJcrCat(args, i+1, env, io);
+				return doJcrCat(args, i+1, pwd, env, io);
 			} else if( CMD_DOCMD.equals(cmd) ) {
 				allowOpts = true;
 			} else if( CMD_EXIT.equals(cmd) ) {
@@ -590,9 +624,9 @@ public class SimplerCommandRunner {
 			} else if( CMD_PRINTENV.equals(cmd) ) {
 				return doJcrPrintEnv(args, i+1, env, io);
 			} else if( CMD_RUNSYSPROC.equals(cmd) ) {
-				return doSysProc(args, i+1, env, io);
+				return doSysProc(args, i+1, pwd, env, io);
 			} else {
-				return doSysProc(args, i, env, io);
+				return doSysProc(args, i, pwd, env, io);
 			}
 		}
 		return 0;
@@ -607,7 +641,7 @@ public class SimplerCommandRunner {
 		return env;
 	}
 	
-	public static int doJcrDoCmdMain(String[] args, int i, Map<String,String> env, Object[] io) {
+	public static int doJcrDoCmdMain(String[] args, int i, File pwd, Map<String,String> env, Object[] io) {
 		int argi = 0;
 		boolean loadStdAliases = true;
 		if( args.length > argi && "--no-std-aliases".equals(args[argi]) ) {
@@ -615,10 +649,10 @@ public class SimplerCommandRunner {
 			++argi;
 		}
 		env = withAliases(env, loadStdAliases ? STANDARD_ALIASES : Collections.<String,String>emptyMap());
-		return doJcrDoCmd(args, argi, env, io);
+		return doJcrDoCmd(args, argi, pwd, env, io);
 	}
 	
 	public static void main(String[] args) {
-		System.exit(doJcrDoCmdMain(args, 0, System.getenv(), new Object[] { System.in, System.out, System.err }));
+		System.exit(doJcrDoCmdMain(args, 0, new File("").getAbsoluteFile(), System.getenv(), new Object[] { System.in, System.out, System.err }));
 	}
 }

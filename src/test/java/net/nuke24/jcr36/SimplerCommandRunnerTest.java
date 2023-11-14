@@ -62,49 +62,51 @@ public class SimplerCommandRunnerTest implements Runnable
 	
 	static Object[] IO_NULL = new Object[] { null, null, null };
 	
+	static File pwd = new File(".").getAbsoluteFile();
+	
 	public void testMainNothing() {
-		assertEquals(0, SimplerCommandRunner.doJcrDoCmdMain(new String[] {}, 0, ENV_EMPTY, IO_NULL));
+		assertEquals(0, SimplerCommandRunner.doJcrDoCmdMain(new String[] {}, 0, pwd, ENV_EMPTY, IO_NULL));
 	}
 	
 	public void testPrint() {
 		OutputCollector out = OutputCollector.create();
-		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:print", "Hello, world!" }, 0, ENV_W_ALIASES, new Object[] { null, out, null });
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:print", "Hello, world!" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, out, null });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!\n", out.toString());
 	}
 	
 	public void testPrintN() {
 		OutputCollector out = OutputCollector.create();
-		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:print", "-n", "Hello, world!" }, 0, ENV_W_ALIASES, new Object[] { null, out, null });
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:print", "-n", "Hello, world!" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, out, null });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!", out.toString());
 	}
 	
 	public void testExit() {
-		assertEquals(0, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit" }, 0, ENV_W_ALIASES, new Object[] { null, null, null }));
+		assertEquals(0, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, null, null }));
 	}
 	
 	public void testExitByLongName() {
-		assertEquals(5, SimplerCommandRunner.doJcrDoCmd(new String[]{ "http://ns.nuke24.net/JavaCommandRunner36/Action/Exit", "5" }, 0, ENV_EMPTY, new Object[] { null, null, null }));
+		assertEquals(5, SimplerCommandRunner.doJcrDoCmd(new String[]{ "http://ns.nuke24.net/JavaCommandRunner36/Action/Exit", "5" }, 0, pwd, ENV_EMPTY, new Object[] { null, null, null }));
 	}
 	
 	public void testExit123() {
-		assertEquals(123, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit", "123" }, 0, ENV_W_ALIASES, new Object[] { null, null, System.err }));
+		assertEquals(123, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit", "123" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, null, System.err }));
 	}
 	
 	public void testExitN456() {
-		assertEquals(-456, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit", "-456" }, 0, ENV_W_ALIASES, new Object[] { null, null, System.err }));
+		assertEquals(-456, SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:exit", "-456" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, null, System.err }));
 	}
 	
 	public void testRunSysProc() {
 		OutputCollector out = OutputCollector.create();
-		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:runsys", "java", "-version" }, 0, ENV_W_ALIASES, new Object[] { null, out, out });
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:runsys", "java", "-version" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, out, out });
 		assertEquals(0, exitCode);
 		assertTrue(out.toString().length() > 0, "Expected `jcr:runsys java -version` to output some non-zero number of characters");
 	}
 	
 	public void testRunSysProcToNul() {
-		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:runsys", "java", "-version" }, 0, ENV_W_ALIASES, new Object[] { null, null, null });
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(new String[]{ "jcr:runsys", "java", "-version" }, 0, pwd, ENV_W_ALIASES, new Object[] { null, null, null });
 		assertEquals(0, exitCode);
 	}
 	
@@ -117,7 +119,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
 			new String[]{ "jcr:runsys", "java", "-jar", jarFile.getPath(), "jcr:print", "-n", "Hello, world!" },
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!", out.toString());
 	}
@@ -126,7 +128,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
 			new String[]{ "jcr:cat", "data:,Hello,%20", "data:,world!" },
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!", out.toString());
 	}
@@ -136,7 +138,7 @@ public class SimplerCommandRunnerTest implements Runnable
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
 			new String[]{ "jcr:cat", "data:text/plain,Hello,%20", "data:text/plain;base64,d29ybGQh" },
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!", out.toString());
 	}
@@ -145,21 +147,44 @@ public class SimplerCommandRunnerTest implements Runnable
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
 			new String[]{ "jcr:cat", "./src/test/resources/hello-world.txt" },
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("Hello, world!\n", out.toString());
 	}
 	
-	public void testCatFileUri() {
+	public void testCatFileByUri() {
 		OutputCollector out = OutputCollector.create();
 		int exitCode = SimplerCommandRunner.doJcrDoCmd(
 			new String[]{ "jcr:cat",
+				"file:src\\test\\resources\\hello-world.txt",
 				"file:src/test/resources/hello-world.txt",
 				"file:./src/test/resources/hello-world.txt"
 			},
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
-		assertEquals("Hello, world!\nHello, world!\n", out.toString());
+		assertEquals("Hello, world!\nHello, world!\nHello, world!\n", out.toString());
+	}
+	
+	public void testCdAndCatFile() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{ "--cd=src/test", "jcr:cat", "resources/hello-world.txt" },
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("Hello, world!\n", out.toString());
+	}
+	
+	public void testCdAndCatFileByUri() {
+		OutputCollector out = OutputCollector.create();
+		int exitCode = SimplerCommandRunner.doJcrDoCmd(
+			new String[]{ "--cd=src/test", "jcr:cat",
+				"file:resources\\hello-world.txt",
+				"file:resources/hello-world.txt",
+				"file:./resources/hello-world.txt",
+			},
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
+		assertEquals(0, exitCode);
+		assertEquals("Hello, world!\nHello, world!\nHello, world!\n", out.toString());
 	}
 	
 	public void testCatEnvUris() {
@@ -169,7 +194,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				"jcr:docmd", "foo=abc", "bar=xyz", //"--clear-env", "--env-from=src/test/resources/foo.env",
 				SimplerCommandRunner.CMD_CAT, "data:,[", "x-jcr36-env:foo", "x-jcr36-env:bar", "data:,]"
 			},
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("[abcxyz]", out.toString());
 	}
@@ -181,7 +206,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				"jcr:docmd", "baz=xyz", "--clear-env", "--load-env-from-properties-file=src/test/resources/foo.env",
 				SimplerCommandRunner.CMD_CAT, "data:,[", "data:,foo%3D", "x-jcr36-env:foo", "data:,, bar%3D", "x-jcr36-env:bar", "data:,, baz%3D", "x-jcr36-env:baz", "data:,]"
 			},
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("[foo=abc, bar=xyz, baz=]", out.toString());
 	}
@@ -193,7 +218,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				"jcr:docmd", "--clear-env", "foo=abc", "bar=xyz",
 				SimplerCommandRunner.CMD_PRINTENV
 			},
-			0, ENV_W_ALIASES, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_ALIASES, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("bar=xyz\nfoo=abc\n", out.toString());
 	}
@@ -205,7 +230,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				// Without '--', our goofy alias should be ignored, and --clear-env has its normal meaning:
 				SimplerCommandRunner.CMD_DOCMD, "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
 			},
-			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("foo\n", out.toString());
 	}
@@ -216,7 +241,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				// '--' should force the next arg to be interpreted as a command.
 				SimplerCommandRunner.CMD_DOCMD, "--", "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
 			},
-			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals(SimplerCommandRunner.CMD_PRINT+" foo\n", out.toString());
 	}
@@ -230,7 +255,7 @@ public class SimplerCommandRunnerTest implements Runnable
 				// and therefore --clear-env should be treated as an option, not a command).
 				SimplerCommandRunner.CMD_DOCMD, "--", SimplerCommandRunner.CMD_DOCMD, "--clear-env", SimplerCommandRunner.CMD_PRINT, "foo",
 			},
-			0, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
+			0, pwd, ENV_W_CLEARENV_MEANS_PRINT, new Object[] { null, out, System.err });
 		assertEquals(0, exitCode);
 		assertEquals("foo\n", out.toString());
 	}
@@ -249,6 +274,9 @@ public class SimplerCommandRunnerTest implements Runnable
 		testCatDataUri();
 		testCatDataUri2();
 		testCatFile();
+		testCatFileByUri();
+		testCdAndCatFile();
+		testCdAndCatFileByUri();
 		testCatEnvUris();
 		testLoadAndCatEnvUris();
 		testPrintEnv();

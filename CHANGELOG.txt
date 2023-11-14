@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version 36.1.28
+JAR: ???
+Date: ???
+Features:
+  - `--cd=<dir>` option, to run subcommand in a specific directory
+  - Include options in help text
+Changes:
+  - path resolution refactored to take pwd into account
+---------------------------------------------------------------------------------------------------
 Version 36.1.26
 JAR: urn:bitprint:H6SX6RXIIIWQ2YFKWBKQIOXVEUXD2DTW.XTA6A7A7ZOQUJ3R25PCLZW3C4TTTRKBPRB35K7A
 Date: 2023-11-13

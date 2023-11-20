@@ -1,7 +1,7 @@
 ---------------------------------------------------------------------------------------------------
 Version 36.1.28
-JAR: ???
-Date: ???
+JAR: urn:bitprint:22WS4G3GDENN3LPPOR7YXKYHTI6BTE4O.5XD6ER3RCDRECR7EQRMC3ULAAFCCZ4Q73AW3KTY
+Date: 2023-11-20
 Features:
   - `--cd=<dir>` option, to run subcommand in a specific directory
   - Include options in help text

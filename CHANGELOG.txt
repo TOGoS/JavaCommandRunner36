@@ -1,7 +1,14 @@
 ---------------------------------------------------------------------------------------------------
 Version 36.1.30
-JAR: ???
-Date: ???
+JAR: urn:bitprint:SNKMFVNMXCV5J5IOLYBFMTGJ2MYXLNG7.OI6RYNG5KZZJ6XGCPN4SIH6YYI3HPSRY6QPA2YA
+Date: 2024-10-14
+Features:
+  - `jcr:until` command, which takes an optional `--delay=<time>` argument
+    - time can be a number of seconds or be of the form `<number><unit>`,
+      where currently supported units are "s" and "ms"
+Changes:
+  - `IOException`s and `InterruptedException`s thrown while running a system process
+    are caught and turned into exit codes rather than being re-throwsn as `RuntimeException`s
 ---------------------------------------------------------------------------------------------------
 Version 36.1.28
 JAR: urn:bitprint:22WS4G3GDENN3LPPOR7YXKYHTI6BTE4O.5XD6ER3RCDRECR7EQRMC3ULAAFCCZ4Q73AW3KTY

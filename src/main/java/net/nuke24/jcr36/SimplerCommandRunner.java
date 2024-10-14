@@ -26,7 +26,7 @@ import org.apache.commons.codec.base64.Base64;
 
 public class SimplerCommandRunner {
 	// Version number was bumped to 36.1.x for 'simpler' (single-class) branch
-	public static final String VERSION = "JCR36.1.30";
+	public static final String VERSION = "JCR36.1.31-dev";
 	
 	public static final int EXIT_CODE_PIPING_ERROR = 23; // Previously -1001
 	

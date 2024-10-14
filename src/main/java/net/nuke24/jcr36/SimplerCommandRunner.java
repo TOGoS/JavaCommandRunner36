@@ -47,6 +47,7 @@ public class SimplerCommandRunner {
 	public static final String CMD_CAT   = "http://ns.nuke24.net/JavaCommandRunner36/Action/Cat";
 	public static final String CMD_FINDEXE = "http://ns.nuke24.net/JavaCommandRunner36/Action/FindExe";
 	public static final String CMD_RUNSYSPROC = "http://ns.nuke24.net/JavaCommandRunner36/Action/RunSysProc";
+	public static final String CMD_UNTIL = "http://ns.nuke24.net/JavaCommandRunner36/Action/Until";
 	
 	static final Charset UTF8 = Charset.forName("UTF-8");
 	
@@ -419,6 +420,41 @@ public class SimplerCommandRunner {
 		return 0;
 	}
 	
+	static final Pattern DELAY_OPTPAT = Pattern.compile("^--delay=(\\d+(?:\\.\\d+)?)(s|ms)?$");
+	
+	public static int doUntil(String[] args, int i, File pwd, Map<String,String> env, Object[] io) {
+		long delayMs = 0;
+		int requiredCode = 0;
+		while( i<args.length ) {
+			Matcher m;
+			if( (m = DELAY_OPTPAT.matcher(args[i])).matches() ) {
+				String unitName = m.group(2);
+				if( unitName == null ) unitName = "s";
+				double rawValue = Double.parseDouble(m.group(1));
+				int unitValue = "s".equals(unitName) ? 1000 : 1;
+				delayMs = (long)(rawValue * unitValue);
+			} else if( "--".equals(args[i]) ) {
+				++i;
+				break;
+			} else {
+				// Anything we don't recognize, let doJcrDoCmd handle it
+				break;
+			}
+			++i;
+		}
+		
+		while( doJcrDoCmd(args, i, pwd, env, io) != requiredCode ) {
+			try {
+				Thread.sleep(delayMs);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return EXIT_CODE_INTERRUPTED;
+			}
+		}
+		
+		return requiredCode;
+	}
+	
 	static class Piper extends Thread {
 		protected InputStream in;
 		protected OutputStream out;
@@ -544,6 +580,7 @@ public class SimplerCommandRunner {
 		STANDARD_ALIASES.put("jcr:exit"    , CMD_EXIT      );
 		STANDARD_ALIASES.put("jcr:print"   , CMD_PRINT     );
 		STANDARD_ALIASES.put("jcr:runsys"  , CMD_RUNSYSPROC);
+		STANDARD_ALIASES.put("jcr:until"   , CMD_UNTIL     );
 	}
 	
 	static Map<String,String> loadEnvFromPropertiesFile(String name, File pwd, Map<String,String> env) throws IOException {
@@ -575,6 +612,9 @@ public class SimplerCommandRunner {
 		"  # print words, separated by <separator> (defauls: one space);\n"+
 		"  # -n to omit otherwise-implicit trailing newline:\n"+
 		"  jcr:print [-n] [--ofs=<separator>] [--] [<word> ...]\n"+
+		"  \n"+
+		"  # Re-run a command until it exits with code 0:\n" +
+		"  jcr:until [--delay=<n>[s|ms]] <command> ...\n" +
 		"  \n"+
 		"  # Exit with status code:\n"+
 		"  jrc:exit [<code>]";
@@ -636,6 +676,8 @@ public class SimplerCommandRunner {
 				return doJcrPrintEnv(args, i+1, env, io);
 			} else if( CMD_RUNSYSPROC.equals(cmd) ) {
 				return doSysProc(args, i+1, pwd, env, io);
+			} else if( CMD_UNTIL.equals(cmd) ) {
+				return doUntil(args, i+1, pwd, env, io);
 			} else {
 				return doSysProc(args, i, pwd, env, io);
 			}

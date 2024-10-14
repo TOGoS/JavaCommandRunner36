@@ -28,6 +28,13 @@ public class SimplerCommandRunner {
 	public static final String VERSION = "JCR36.1.29-dev"; // Bump to 36.1.x for 'simpler' version
 	
 	public static final int EXIT_CODE_PIPING_ERROR = 23; // Previously -1001
+	
+	// Borrowed from 'standard' shell exit codes of 128+signal
+	public static final int EXIT_CODE_SIGKILLED = 137;
+	public static final int EXIT_CODE_SIGTERMED = 143;
+	
+	public static final int EXIT_CODE_INTERRUPTED = EXIT_CODE_SIGTERMED;
+	public static final int EXIT_CODE_SPAWN_FAILURE = 143;
 	// Borrowing some 'standard Linux exit codes':
 	public static final int EXIT_CODE_USAGE_ERROR = 2; // 'Misuse of shell built-in'
 	public static final int EXIT_CODE_COMMAND_NOT_FOUND = 127;
@@ -491,6 +498,9 @@ public class SimplerCommandRunner {
 		pb.redirectOutput(io[1] == System.out ? Redirect.INHERIT : Redirect.PIPE);
 		pb.redirectError( io[2] == System.err ? Redirect.INHERIT : Redirect.PIPE);
 		Process proc;
+		
+		PrintStream stdErr = toPrintStream(io[2]);
+		
 		try {
 			proc = pb.start();
 			ArrayList<Piper> pipers = new ArrayList<Piper>();
@@ -503,16 +513,17 @@ public class SimplerCommandRunner {
 				p.join();
 				if( !p.errors.isEmpty() && exitCode == 0 ) exitCode = EXIT_CODE_PIPING_ERROR; 
 			}
-			PrintStream stdErr = toPrintStream(io[2]);
 			if( stdErr != null ) for( Piper p : pipers ) for( Throwable e : p.errors ) {
 				stdErr.print("Piping error: "+e+"\n");
 			}
 			
 			return exitCode;
 		} catch (IOException e) {
-			throw new RuntimeException("Failed to run process "+debug(resolvedArgs)+" (pwd="+pwd+")", e);
+			if( stdErr != null ) stdErr.println("Failed to run process "+debug(resolvedArgs)+" (pwd="+pwd+"); exception: "+e.getMessage());
+			return EXIT_CODE_COMMAND_NOT_FOUND;
 		} catch (InterruptedException e) {
-			throw new RuntimeException("Interrupted while running process "+debug(resolvedArgs)+" (pwd="+pwd+")", e);
+			if( stdErr != null ) stdErr.println("Interrupted while running process "+debug(resolvedArgs)+" (pwd="+pwd+")");
+			return EXIT_CODE_INTERRUPTED;
 		}
 	}
 	
